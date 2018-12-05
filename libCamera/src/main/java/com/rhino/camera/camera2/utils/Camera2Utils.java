@@ -22,12 +22,13 @@ import java.util.List;
 
 /**
  * Created by ${xingen} on 2017/10/20.
- *
+ * <p>
  * Camera2 API中一些计算
  */
 
 public class Camera2Utils {
 
+    private static final String TAG = Camera2Utils.class.getSimpleName();
 
     /**
      * 检查是否支持设备自动对焦
@@ -40,33 +41,32 @@ public class Camera2Utils {
     public static boolean checkAutoFocus(CameraCharacteristics characteristics) {
         int[] afAvailableModes = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
         if (afAvailableModes.length == 0 || (afAvailableModes.length == 1 && afAvailableModes[0] == CameraMetadata.CONTROL_AF_MODE_OFF)) {
-            return  false;
+            return false;
         } else {
-             return  true;
+            return true;
         }
     }
 
     /**
      * 检查相机支持哪几种focusMode
+     *
      * @param cameraCharacteristics
      */
-    public  void checkFocusMode(CameraCharacteristics cameraCharacteristics){
+    public void checkFocusMode(CameraCharacteristics cameraCharacteristics) {
         int[] availableFocusModes = cameraCharacteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES);
         for (int focusMode : availableFocusModes != null ? availableFocusModes : new int[0]) {
             if (focusMode == CameraCharacteristics.CONTROL_AF_MODE_OFF) {
 
-            }
-            else if (focusMode == CameraCharacteristics.CONTROL_AF_MODE_MACRO) {
+            } else if (focusMode == CameraCharacteristics.CONTROL_AF_MODE_MACRO) {
 
-            }
-            else if (focusMode == CameraCharacteristics.CONTROL_AF_MODE_CONTINUOUS_PICTURE) {
+            } else if (focusMode == CameraCharacteristics.CONTROL_AF_MODE_CONTINUOUS_PICTURE) {
 
-            }
-            else if (focusMode == CameraCharacteristics.CONTROL_AF_MODE_AUTO) {
+            } else if (focusMode == CameraCharacteristics.CONTROL_AF_MODE_AUTO) {
 
             }
         }
     }
+
     /**
      * 计算合适的大小Size,在相机拍照
      *
@@ -101,7 +101,7 @@ public class Camera2Utils {
         if (bigEnough.size() > 0) {
             return Collections.min(bigEnough, compareSizesByArea);
         } else if (notBigEnough.size() > 0) {
-            return Collections.max(notBigEnough,compareSizesByArea);
+            return Collections.max(notBigEnough, compareSizesByArea);
         } else {
             Log.e(" 计算结果", "Couldn't find any suitable preview size");
             return choices[0];
@@ -112,7 +112,7 @@ public class Camera2Utils {
      * Retrieves the JPEG orientation from the specified screen rotation.
      *
      * @param rotation 屏幕的方向
-     * @return JPEG的方向(例如：0,90,270,360)
+     * @return JPEG的方向(例如 ： 0, 90, 270, 360)
      */
     public static int getOrientation(SparseIntArray ORIENTATIONS, int mSensorOrientation, int rotation) {
         // Sensor orientation is 90 for most devices, or 270 for some devices (eg. Nexus 5X)
@@ -122,7 +122,7 @@ public class Camera2Utils {
         return (ORIENTATIONS.get(rotation) + mSensorOrientation + 270) % 360;
     }
 
-   public  static Size chooseVideoSize(Size[] choices) {
+    public static Size chooseVideoSize(Size[] choices) {
         for (Size size : choices) {
             if (size.getWidth() == size.getHeight() * 4 / 3 && size.getWidth() <= 1080) {
                 return size;
@@ -133,13 +133,14 @@ public class Camera2Utils {
 
     /**
      * 计算合适的大小，在视频录制
+     *
      * @param choices
      * @param width
      * @param height
      * @param aspectRatio
      * @return
      */
-    public  static Size chooseOptimalSize(Size[] choices, int width, int height, Size aspectRatio) {
+    public static Size chooseOptimalSize(Size[] choices, int width, int height, Size aspectRatio) {
         // Collect the supported resolutions that are at least as big as the preview Surface
         List<Size> bigEnough = new ArrayList<>();
         int w = aspectRatio.getWidth();
@@ -160,58 +161,60 @@ public class Camera2Utils {
 
     /**
      * 匹配指定方向的摄像头，前还是后
-     *
+     * <p>
      * LENS_FACING_FRONT是前摄像头标志
+     *
      * @param cameraCharacteristics
      * @param direction
      * @return
      */
-    public static  boolean matchCameraDirection(CameraCharacteristics cameraCharacteristics, int direction){
+    public static boolean matchCameraDirection(CameraCharacteristics cameraCharacteristics, int direction) {
         //这里设置后摄像头
         Integer facing = cameraCharacteristics.get(CameraCharacteristics.LENS_FACING);
-         return  (facing != null && facing == direction)?true:false;
+        return (facing != null && facing == direction) ? true : false;
     }
 
     /**
      * 获取相机支持最大的调焦距离
+     *
      * @param cameraCharacteristics
      * @return
      */
-    public  static Float getMinimumFocusDistance(CameraCharacteristics cameraCharacteristics){
-        Float distance=null;
+    public static Float getMinimumFocusDistance(CameraCharacteristics cameraCharacteristics) {
+        Float distance = null;
         try {
-         distance= cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE);
-        }catch (NullPointerException e){
-            e.printStackTrace();
+            distance = cameraCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE);
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
-        return  distance;
+        return distance;
     }
 
     /**
      * 获取最大的数字变焦值，也就是缩放值
+     *
      * @param cameraCharacteristics
      * @return
      */
-    public static Float getMaxZoom(CameraCharacteristics cameraCharacteristics){
-        Float maxZoom=null;
+    public static Float getMaxZoom(CameraCharacteristics cameraCharacteristics) {
+        Float maxZoom = null;
         try {
-          maxZoom= cameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
-        }catch (Exception e){
-            e.printStackTrace();
+            maxZoom = cameraCharacteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
         return maxZoom;
     }
 
     /**
      * 用于检查是否支持Camera 2
-     *
+     * <p>
      * 事实上，在各个厂商的的Android设备上，Camera2的各种特性并不都是可用的，
      * 需要通过characteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)方法来根据返回值来获取支持的级别：
-     *
+     * <p>
      * 1. INFO_SUPPORTED_HARDWARE_LEVEL_FULL：全方位的硬件支持，允许手动控制全高清的摄像、支持连拍模式以及其他新特性。
      * 2. INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED：有限支持，这个需要单独查询。
      * 3. INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY：所有设备都会支持，也就是和过时的Camera API支持的特性是一致的。
-     *
      *
      * @param mContext
      * @return
@@ -241,7 +244,8 @@ public class Camera2Utils {
                 }
             }
             return notFull;
-        } catch (Throwable ignore) {
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
             return false;
         }
     }
@@ -249,42 +253,44 @@ public class Camera2Utils {
 
     /**
      * 计算zoom所对应的rect
+     *
      * @param originReact 相机原始的rect
      * @param currentZoom 当前的zoom值
      * @return
      */
-     public static Rect createZoomRect(Rect originReact, float currentZoom){
-        Rect zoomRect=null;
+    public static Rect createZoomRect(Rect originReact, float currentZoom) {
+        Rect zoomRect = null;
         try {
-            if (originReact==null){
+            if (originReact == null) {
                 return zoomRect;
-            }else{
-                float ratio=(float)1/currentZoom;
-                int cropWidth=originReact.width()-Math.round((float)originReact.width() * ratio);
-                int cropHeight=originReact.height() - Math.round((float)originReact.height() * ratio);
-                zoomRect = new Rect(cropWidth/2, cropHeight/2, originReact.width() - cropWidth/2, originReact.height() - cropHeight/2);
+            } else {
+                float ratio = (float) 1 / currentZoom;
+                int cropWidth = originReact.width() - Math.round((float) originReact.width() * ratio);
+                int cropHeight = originReact.height() - Math.round((float) originReact.height() * ratio);
+                zoomRect = new Rect(cropWidth / 2, cropHeight / 2, originReact.width() - cropWidth / 2, originReact.height() - cropHeight / 2);
             }
-        }catch (Exception e){
-            e.printStackTrace();
-            zoomRect=null;
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
+            zoomRect = null;
         }
         return zoomRect;
-     }
+    }
 
     /**
      * 通知图库更新图片
+     *
      * @param context
      * @param filePath
      */
-     public static  void sendBroadcastNotify(Context context, String filePath){
-         //扫描指定文件
-         String action=Intent.ACTION_MEDIA_SCANNER_SCAN_FILE;
-         //生成问价路径对应的uri
-         Uri uri=Uri.fromFile(new File(filePath));
-         Intent intent=new Intent(action);
-         intent.setData(uri);
-         context.sendBroadcast(intent);
-     }
+    public static void sendBroadcastNotify(Context context, String filePath) {
+        //扫描指定文件
+        String action = Intent.ACTION_MEDIA_SCANNER_SCAN_FILE;
+        //生成问价路径对应的uri
+        Uri uri = Uri.fromFile(new File(filePath));
+        Intent intent = new Intent(action);
+        intent.setData(uri);
+        context.sendBroadcast(intent);
+    }
 
 
 }

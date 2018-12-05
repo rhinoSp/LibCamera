@@ -132,7 +132,7 @@ public class PictureOperater extends BaseCamera2Operator {
 
     @Override
     public void stopOperate() {
-         Log.i(TAG, TAG+" 关闭相机的操作 ");
+        Log.i(TAG, TAG + " 关闭相机的操作 ");
         closeCamera();
     }
 
@@ -159,10 +159,8 @@ public class PictureOperater extends BaseCamera2Operator {
                     return;
                 }*/
                 manager.openCamera(mCameraId, stateCallback, workThreadManager.getBackgroundHandler());
-            } catch (CameraAccessException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
-                throw new RuntimeException("Interrupted while trying to lock camera opening.", e);
+            } catch (Exception e) {
+                Log.e(TAG, e.toString());
             }
         }
     }
@@ -232,8 +230,8 @@ public class PictureOperater extends BaseCamera2Operator {
                 imageReader.close();
                 imageReader = null;
             }
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Interrupted while trying to lock camera closi" + "ng.", e);
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         } finally {
             mCameraOpenCloseLock.release();
         }
@@ -243,12 +241,12 @@ public class PictureOperater extends BaseCamera2Operator {
      * 拍照
      */
     public void takePicture() {
-        ToastUtils.showToast(camera2Manager.getContext()," 请别抖动，正在拍照中。");
+        ToastUtils.showToast(camera2Manager.getContext(), " 请别抖动，正在拍照中。");
         if (mAutoFocusSupported) {
-            Log.i(TAG,TAG+"支持自动调焦，正在锁住焦点");
+            Log.i(TAG, TAG + "支持自动调焦，正在锁住焦点");
             lockFocus();
         } else {//设备不支持自动对焦，则直接拍照。
-            Log.i(TAG,TAG+"不支持自动调焦，直接拍照");
+            Log.i(TAG, TAG + "不支持自动调焦，直接拍照");
             captureStillPicture();
         }
     }
@@ -264,8 +262,8 @@ public class PictureOperater extends BaseCamera2Operator {
             mState = STATE_WAITING_LOCK;
             //进行拍照处理
             mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, workThreadManager.getBackgroundHandler());
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
     }
 
@@ -307,7 +305,7 @@ public class PictureOperater extends BaseCamera2Operator {
                 }
             }, null);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, e.toString());
         }
     }
 
@@ -326,8 +324,8 @@ public class PictureOperater extends BaseCamera2Operator {
             mPreviewRequest = mPreviewRequestBuilder.build();
             //为CameraCaptureSession设置复用的CaptureRequest。
             mCaptureSession.setRepeatingRequest(mPreviewRequest, mCaptureCallback, workThreadManager.getBackgroundHandler());
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
     }
 
@@ -340,7 +338,7 @@ public class PictureOperater extends BaseCamera2Operator {
                 currentZoom = maxZoom * camera2Manager.getZoomProportion();
                 setZoom(currentZoom);
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, e.toString());
             }
         }
     }
@@ -349,38 +347,39 @@ public class PictureOperater extends BaseCamera2Operator {
 
     private void setZoom(float currentZoom) {
         try {
-            zoomRect=createZoomReact();
-            if (zoomRect==null){
-                Log.i(TAG, "相机不支持 zoom " );
-                return ;
+            zoomRect = createZoomReact();
+            if (zoomRect == null) {
+                Log.i(TAG, "相机不支持 zoom ");
+                return;
             }
-            mPreviewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION,zoomRect);
+            mPreviewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
             mPreviewRequest = mPreviewRequestBuilder.build();
-            Log.i(TAG, " 最大缩放值 " + maxZoom + " 设置缩放值 " + currentZoom );
+            Log.i(TAG, " 最大缩放值 " + maxZoom + " 设置缩放值 " + currentZoom);
             //为CameraCaptureSession设置复用的CaptureRequest。
             mCaptureSession.setRepeatingRequest(mPreviewRequest, mCaptureCallback, workThreadManager.getBackgroundHandler());
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, e.toString());
         }
     }
 
     /**
      * 计算出zoom所对应的裁剪区域
+     *
      * @return
      */
     private Rect createZoomReact() {
-        if (currentZoom==0){
+        if (currentZoom == 0) {
             return null;
         }
         try {
             Rect rect = cameraCharacteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
-            if (rect==null){
+            if (rect == null) {
                 return null;
             }
-            zoomRect =Camera2Utils.createZoomRect(rect,currentZoom);
+            zoomRect = Camera2Utils.createZoomRect(rect, currentZoom);
             Log.i(TAG, "zoom对应的 rect对应的区域 " + zoomRect.left + " " + zoomRect.right + " " + zoomRect.top + " " + zoomRect.bottom);
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, e.toString());
         }
         return zoomRect;
     }
@@ -430,7 +429,7 @@ public class PictureOperater extends BaseCamera2Operator {
                 requestBuilder.set(CaptureRequest.LENS_FOCUS_DISTANCE, distance);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, e.toString());
         }
 
     }
@@ -495,7 +494,7 @@ public class PictureOperater extends BaseCamera2Operator {
                         } else {
                             runPrecaptureSequence();
                         }
-                    }else{
+                    } else {
                         mState = STATE_PICTURE_TAKEN;
                         captureStillPicture();
                     }
@@ -548,8 +547,8 @@ public class PictureOperater extends BaseCamera2Operator {
             //设置成预捕获状态，将需等待。
             mState = STATE_WAITING_PRECAPTURE;
             mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, workThreadManager.getBackgroundHandler());
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
     }
 
@@ -570,12 +569,12 @@ public class PictureOperater extends BaseCamera2Operator {
 
             captureBuilder.addTarget(imageReader.getSurface());
             // 使用相同的AE和AF模式作为预览.
-             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
 
             //让相机中缩放效果和图片保持一致
             //   zoomRect=createZoomReact();
             if (zoomRect != null) {
-                Log.i(TAG," 拍照 添加裁剪区域 "+zoomRect.toString());
+                Log.i(TAG, " 拍照 添加裁剪区域 " + zoomRect.toString());
                 captureBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
             }
             setAutoFlash(captureBuilder);
@@ -595,8 +594,8 @@ public class PictureOperater extends BaseCamera2Operator {
             mCaptureSession.abortCaptures();
             //执行拍照状态
             mCaptureSession.capture(captureBuilder.build(), captureCallback, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
     }
 
@@ -612,9 +611,9 @@ public class PictureOperater extends BaseCamera2Operator {
             // 恢复正常状态
             mState = STATE_PREVIEW;
             mCaptureSession.setRepeatingRequest(mPreviewRequest, mCaptureCallback, workThreadManager.getBackgroundHandler());
-            Log.i(TAG, TAG+" 拍照完成，释放焦点  unlockFocus() ");
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
+            Log.i(TAG, TAG + " 拍照完成，释放焦点  unlockFocus() ");
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
     }
 
@@ -737,7 +736,7 @@ public class PictureOperater extends BaseCamera2Operator {
                 return;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, e.toString());
             //不支持该设备
             if (e instanceof NullPointerException) {
                 ToastUtils.showToast(appContext, "设备不支持Camera2 API");

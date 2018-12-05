@@ -138,8 +138,8 @@ public class VideoRecordOperator extends BaseCamera2Operator {
                             }
                         }
                     }, workThreadManager.getBackgroundHandler());
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
         if (null != mTextureView) {
             configureTransform(getTextureViewContext(), mTextureView.getWidth(), mTextureView.getHeight());
@@ -156,8 +156,8 @@ public class VideoRecordOperator extends BaseCamera2Operator {
         try {
             setUpCaptureRequestBuilder(mPreviewBuilder);
             mPreviewSession.setRepeatingRequest(mPreviewBuilder.build(), null, workThreadManager.getBackgroundHandler());
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
     }
 
@@ -211,8 +211,8 @@ public class VideoRecordOperator extends BaseCamera2Operator {
         try {
             mPreviewSession.stopRepeating();
             mPreviewSession.abortCaptures();
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
         Subscription subscription = Observable
                 //延迟三十毫秒
@@ -225,7 +225,8 @@ public class VideoRecordOperator extends BaseCamera2Operator {
                     }
                     try {
                         mMediaRecorder.stop();
-                    } catch (IllegalStateException e) {
+                    } catch (Exception e) {
+                        Log.e(TAG, e.toString());
                         mMediaRecorder = null;
                         mMediaRecorder = new MediaRecorder();
                     }
@@ -362,8 +363,8 @@ public class VideoRecordOperator extends BaseCamera2Operator {
                     }
                 }
             }, workThreadManager.getBackgroundHandler());
-        } catch (CameraAccessException | IOException e) {
-            e.printStackTrace();
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         }
     }
 
@@ -431,8 +432,8 @@ public class VideoRecordOperator extends BaseCamera2Operator {
                 mMediaRecorder = null;
             }
 
-        } catch (InterruptedException e) {
-            throw new RuntimeException("Interrupted while trying to lock camera closing.");
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
         } finally {
             mCameraOpenCloseLock.release();
         }
@@ -468,9 +469,8 @@ public class VideoRecordOperator extends BaseCamera2Operator {
             }
             Log.i(TAG, "zoom对应的 rect对应的区域 " + zoomRect.left + " " + zoomRect.right + " " + zoomRect.top + " " + zoomRect.bottom);
             mPreviewBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoomRect);
-
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, e.toString());
         }
     }
 
@@ -484,7 +484,6 @@ public class VideoRecordOperator extends BaseCamera2Operator {
                 return;
             }
 
-            AutoFitTextureView textureView = (AutoFitTextureView) getTextureView();
             CameraManager manager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
             try {
                 Log.d(TAG, "tryAcquire");
@@ -526,8 +525,8 @@ public class VideoRecordOperator extends BaseCamera2Operator {
                 activity.finish();
             } catch (NullPointerException e) {
                 ToastUtils.showToast(appContext, "当前设备不支持Camera2 API");
-            } catch (InterruptedException e) {
-                throw new RuntimeException("在锁住相机开启期间被打断.");
+            } catch (Exception e) {
+                Log.e(TAG, e.toString());
             }
         }
     }

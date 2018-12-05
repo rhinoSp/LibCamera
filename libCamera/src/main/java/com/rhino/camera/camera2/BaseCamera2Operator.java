@@ -44,34 +44,37 @@ public abstract class BaseCamera2Operator {
     protected static final SparseIntArray DEFAULT_ORIENTATIONS = new SparseIntArray();
 
     protected int currentDirection;
+
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
         ORIENTATIONS.append(Surface.ROTATION_90, 0);
         ORIENTATIONS.append(Surface.ROTATION_180, 270);
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
+
     static {
         DEFAULT_ORIENTATIONS.append(Surface.ROTATION_0, 90);
         DEFAULT_ORIENTATIONS.append(Surface.ROTATION_90, 0);
         DEFAULT_ORIENTATIONS.append(Surface.ROTATION_180, 270);
         DEFAULT_ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
+
     private WeakReference<TextureView> weakReference;
+
     public BaseCamera2Operator() {
 
     }
+
     protected void setWeakReference(TextureView textureView) {
-        if (getTextureView()==null){
+        if (getTextureView() == null) {
             this.weakReference = new WeakReference<>(textureView);
-            this.appContext= textureView.getContext();
+            this.appContext = textureView.getContext();
         }
     }
 
     protected TextureView getTextureView() {
         return weakReference != null ? weakReference.get() : null;
     }
-
-
 
 
     protected Activity getTextureViewContext() {
@@ -81,6 +84,7 @@ public abstract class BaseCamera2Operator {
     public TextureView.SurfaceTextureListener getSurfaceTextureListener() {
         return mSurfaceTextureListener;
     }
+
     public void setCurrentDirection(int currentDirection) {
         this.currentDirection = currentDirection;
     }
@@ -98,10 +102,11 @@ public abstract class BaseCamera2Operator {
     /**
      * 切换摄像头的操作
      */
-    public void switchCameraDirectionOperate(){
-              this.stopOperate();
-              this.startOperate();
+    public void switchCameraDirectionOperate() {
+        this.stopOperate();
+        this.startOperate();
     }
+
     /**
      * TextureView的生命周期，事件回调。
      */
@@ -187,57 +192,59 @@ public abstract class BaseCamera2Operator {
      *
      * @param image
      */
-   protected abstract void writePictureData(Image image);
+    protected abstract void writePictureData(Image image);
 
     /**
      * 开始时预览，更新请求
      */
-   protected abstract void startPreView();
+    protected abstract void startPreView();
 
     /**
-     *相机按钮的点击事件，可能在拍照，可能在录像
+     * 相机按钮的点击事件，可能在拍照，可能在录像
      */
     public abstract void cameraClick();
 
     /**
      * 开始操作
      */
-    public abstract  void startOperate();
+    public abstract void startOperate();
 
     /**
      * 关闭当前的PreviewSession
      */
-   protected abstract  void closePreviewSession();
+    protected abstract void closePreviewSession();
 
     /**
      * 停止操作
      */
-    public  abstract  void stopOperate();
+    public abstract void stopOperate();
 
 
     /**
      * 获取到Id，然后通过指定Id打开指定的相机。
-     *
+     * <p>
      * 结果将会StateCallback监听器中回调。
      *
-     * @param  activity
+     * @param activity
      * @param width
      * @param height
      */
     protected abstract void openCamera(Activity activity, int width, int height);
+
     /**
      * 配置需要转换的Matrix到TextureView中。
      * 在设置完相机预览大小后，才调用
-     * @param  activity
+     *
+     * @param activity
      * @param viewWidth
      * @param viewHeight
      */
-   protected abstract void configureTransform(Activity activity, int viewWidth, int viewHeight);
+    protected abstract void configureTransform(Activity activity, int viewWidth, int viewHeight);
 
     /**
      * 通知调焦情况，发生改变
      */
-   public abstract  void notifyFocusState();
+    public abstract void notifyFocusState();
 
     public interface Camera2ResultCallBack {
         /**
@@ -247,14 +254,16 @@ public abstract class BaseCamera2Operator {
          */
         void callBack(Observable<String> result);
     }
+
     protected Camera2ResultCallBack camera2ResultCallBack;
 
     public void setCamera2ResultCallBack(Camera2ResultCallBack camera2ResultCallBack) {
         this.camera2ResultCallBack = camera2ResultCallBack;
     }
-    public interface  Camera2VideoRecordCallBack{
+
+    public interface Camera2VideoRecordCallBack {
         /**
-         *  开始录制
+         * 开始录制
          */
         void startRecord();
 
