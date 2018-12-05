@@ -346,11 +346,15 @@ public class VideoRecordOperator extends BaseCamera2Operator {
                         if (mMediaRecorder == null) {
                             return;
                         }
-                        mIsRecordingVideo = true;
-                        isRecordGonging = true;
-                        mMediaRecorder.start();
-                        if (camera2VideoRecordCallBack != null) {
-                            camera2VideoRecordCallBack.startRecord();
+                        try {
+                            mMediaRecorder.start();
+                            mIsRecordingVideo = true;
+                            isRecordGonging = true;
+                            if (camera2VideoRecordCallBack != null) {
+                                camera2VideoRecordCallBack.startRecord();
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, e.toString());
                         }
                     });
                 }
