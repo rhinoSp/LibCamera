@@ -1,21 +1,40 @@
 apply plugin: 'com.android.library'
+apply from: "aar.gradle"
 
 android {
-    compileSdkVersion rootProject.ext.compileSdkVersion
+    compileSdkVersion rootProject.android.compileSdkVersion
 
     defaultConfig {
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        minSdkVersion rootProject.android.minSdkVersion
+        targetSdkVersion rootProject.android.targetSdkVersion
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+
+    task makeJar(type: Copy) {
+        //删除存在的jar包
+        delete 'build/libs/MyUtils.jar'
+        //设置拷贝的文件
+        from('build/intermediates/intermediate-jars/release/')
+        // 打进jar包后的文件目录
+        into('build/libs/')
+        // 将classes.jar放入build/libs/目录下
+        // include ,exclude参数来设置过滤
+        // （我们只关心classes.jar这个文件）
+        include('classes.jar')
+        // 重命名
+        rename('classes.jar', 'MyUtils.jar')
+    }
+
+    makeJar.dependsOn(build)
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation rootProject.ext.lib_appcompat
-    implementation rootProject.ext.lib_rxjava
-    implementation rootProject.ext.lib_rxandroid
+    api rootProject.ext.dependencies["appcompat-v7"]
+    implementation(name: 'com.rhino.log-libLog-v1.4.2', ext: 'aar')
 }
+
