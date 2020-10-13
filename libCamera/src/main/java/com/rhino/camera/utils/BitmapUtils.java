@@ -5,6 +5,8 @@ import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.os.Environment;
@@ -28,6 +30,17 @@ import java.nio.ByteBuffer;
  */
 public class BitmapUtils {
 
+    private static final String TAG = BitmapUtils.class.getSimpleName();
+
+    // 拼接图片方向标志（原图左边）
+    private static final int LEFT = 0;
+    // 拼接图片方向标志（原图右边）
+    private static final int RIGHT = 1;
+    // 拼接图片方向标志（原图上边）
+    private static final int TOP = 2;
+    // 拼接图片方向标志（原图下边）
+    private static final int BOTTOM = 3;
+
     /**
      * 根据资源id获取bitmap
      */
@@ -50,22 +63,14 @@ public class BitmapUtils {
     @Nullable
     public static Bitmap decodeBitmapFromFile(String filePath) {
         Bitmap bitmap = null;
-        InputStream inputStream = null;
-        try {
-            File file = new File(filePath);
-            inputStream = new FileInputStream(file);
+        File file = new File(filePath);
+        try (InputStream inputStream = new FileInputStream(file)) {
             bitmap = BitmapFactory.decodeStream(inputStream);
             if (bitmap != null) {
                 bitmap = bitmap.copy(bitmap.getConfig(), true);
             }
-        } catch (Exception e) {
-            LogUtils.e(e.toString());
-        } finally {
-            try {
-                inputStream.close();
-            } catch (Exception e) {
-                LogUtils.e(e.toString());
-            }
+        } catch (IOException e) {
+            LogUtils.e(TAG, e.toString());
         }
         return bitmap;
     }
@@ -85,12 +90,14 @@ public class BitmapUtils {
                 bitmap = bitmap.copy(bitmap.getConfig(), true);
             }
         } catch (IOException e) {
-            LogUtils.e(e.toString());
+            LogUtils.e(TAG, e.toString());
         } finally {
             try {
-                inputStream.close();
+                if (inputStream != null) {
+                    inputStream.close();
+                }
             } catch (Exception e) {
-                LogUtils.e(e.toString());
+                LogUtils.e(TAG, e.toString());
             }
         }
         return bitmap;
@@ -126,9 +133,46 @@ public class BitmapUtils {
      * 用ByteArrayOutputStream方式把Bitmap转Byte
      */
     @NonNull
-    public static byte[] bitmap2BytesByStream(Bitmap bitmap) {
+    public static byte[] bitmapToBytesByStream(Bitmap bitmap) {
+        return bitmapToBytesByStream(bitmap, 100);
+    }
+
+    /**
+     * Bitmap转RGB
+     */
+    @NonNull
+    public static byte[] bitmapToRGB(Bitmap bitmap) {
+        int bytes = bitmap.getByteCount();  //返回可用于储存此位图像素的最小字节数
+
+        ByteBuffer buffer = ByteBuffer.allocate(bytes); //  使用allocate()静态方法创建字节缓冲区
+        bitmap.copyPixelsToBuffer(buffer); // 将位图的像素复制到指定的缓冲区
+
+        byte[] rgba = buffer.array();
+        byte[] pixels = new byte[(rgba.length / 4) * 3];
+
+        int count = rgba.length / 4;
+
+        //Bitmap像素点的色彩通道排列顺序是RGBA
+        for (int i = 0; i < count; i++) {
+
+            pixels[i * 3] = rgba[i * 4];        //R
+            pixels[i * 3 + 1] = rgba[i * 4 + 1];    //G
+            pixels[i * 3 + 2] = rgba[i * 4 + 2];       //B
+
+        }
+        return pixels;
+    }
+
+    /**
+     * 用ByteArrayOutputStream方式把Bitmap转Byte
+     */
+    @NonNull
+    public static byte[] bitmapToBytesByStream(Bitmap bitmap, int quality) {
+        if (bitmap == null) {
+            return new byte[]{};
+        }
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
+        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, byteArrayOutputStream);
         return byteArrayOutputStream.toByteArray();
     }
 
@@ -136,7 +180,7 @@ public class BitmapUtils {
      * 用Buffer方式把Bitmap转Byte
      */
     @NonNull
-    public static byte[] bitmap2BytesByBuffer(Bitmap bitmap) {
+    public static byte[] bitmapToBytesByBuffer(Bitmap bitmap) {
         int byteCount = bitmap.getByteCount();
         ByteBuffer byteBuffer = ByteBuffer.allocate(byteCount);
         bitmap.copyPixelsToBuffer(byteBuffer);
@@ -250,31 +294,13 @@ public class BitmapUtils {
         if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
             return false;
         }
-        FileOutputStream fileOutputStream = null;
-        BufferedOutputStream bufferedOutputStream = null;
-        try {
-            fileOutputStream = new FileOutputStream(file);
-            bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
+        try (FileOutputStream fileOutputStream = new FileOutputStream(file);
+             BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream)) {
             bufferedOutputStream.write(bytes);
             bufferedOutputStream.flush();
             saveSuccess = true;
-        } catch (Exception e) {
-            LogUtils.e(e.toString());
-        } finally {
-            if (fileOutputStream != null) {
-                try {
-                    fileOutputStream.close();
-                } catch (IOException e) {
-                    LogUtils.e(e);
-                }
-            }
-            if (bufferedOutputStream != null) {
-                try {
-                    bufferedOutputStream.close();
-                } catch (Exception e2) {
-                    e2.printStackTrace();
-                }
-            }
+        } catch (IOException e) {
+            LogUtils.e(TAG, e.toString());
         }
         return saveSuccess;
     }
@@ -286,7 +312,7 @@ public class BitmapUtils {
      * @return 返回保存图片路径，null 保存失败
      */
     @Nullable
-    public static String saveBitmap(@NonNull Bitmap bitmap) {
+    public static String saveBitmap(Bitmap bitmap) {
         return saveBitmap(bitmap, 100);
     }
 
@@ -297,65 +323,47 @@ public class BitmapUtils {
      * @return 返回保存图片路径，null 保存失败
      */
     @Nullable
-    public static String saveBitmap(@NonNull Bitmap bitmap, int quality) {
+    public static String saveBitmap(Bitmap bitmap, int quality) {
+        if (bitmap == null) {
+            return null;
+        }
         File dir = new File(Environment.getExternalStorageDirectory(), "Album");
         if (!dir.exists() && !dir.mkdirs()) {
             return null;
         }
         String fileName = PrimaryUtils.createPrimary() + ".jpg";
         File file = new File(dir, fileName);
-        return saveBitmap(bitmap, file.getAbsolutePath(), quality);
-    }
-
-    /**
-     * 保存图片的方法
-     *
-     * @param bitmap             Bitmap
-     * @param filePathOrFileName 保存文件路径或者文件名
-     * @return true 保存成功， false 保存失败
-     */
-    public static String saveBitmap(@NonNull Bitmap bitmap, String filePathOrFileName) {
-        return saveBitmap(bitmap, filePathOrFileName, 100);
-    }
-
-    /**
-     * 保存图片的方法
-     *
-     * @param bitmap             Bitmap
-     * @param filePathOrFileName 保存文件路径或者文件名
-     * @param quality            保存质量
-     * @return true 保存成功， false 保存失败
-     */
-    public static String saveBitmap(@NonNull Bitmap bitmap, String filePathOrFileName, int quality) {
-        File file = new File(filePathOrFileName);
-        if (!filePathOrFileName.contains("/")) {
-            File dir = new File(Environment.getExternalStorageDirectory(), "Album");
-            if (!dir.exists() && !dir.mkdirs()) {
-                return null;
-            }
-            file = new File(dir, filePathOrFileName);
-        }
-        if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
-            return null;
-        }
-        FileOutputStream fos = null;
-        try {
-            fos = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, fos);
-            fos.flush();
+        if (saveBitmap(bitmap, file.getAbsolutePath(), quality)) {
             return file.getPath();
-        } catch (IOException e) {
-            LogUtils.e(e.toString());
-        } finally {
-            try {
-                if (fos != null) {
-                    fos.close();
-                }
-            } catch (IOException e) {
-                LogUtils.e(e);
-            }
         }
         return null;
+    }
+
+    /**
+     * 保存图片的方法
+     *
+     * @param bitmap   Bitmap
+     * @param filePath 保存文件路径
+     * @param quality  保存质量
+     * @return true 保存成功， false 保存失败
+     */
+    public static boolean saveBitmap(Bitmap bitmap, String filePath, int quality) {
+        if (bitmap == null) {
+            return false;
+        }
+        boolean saveSuccess = false;
+        File file = new File(filePath);
+        if (!file.getParentFile().exists() && !file.getParentFile().mkdirs()) {
+            return false;
+        }
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, fos);
+            fos.flush();
+            saveSuccess = true;
+        } catch (IOException e) {
+            LogUtils.e(TAG, e.toString());
+        }
+        return saveSuccess;
     }
 
     /**
@@ -372,7 +380,7 @@ public class BitmapUtils {
      */
     @Nullable
     public static Bitmap crop(@NonNull Bitmap bitmap, Rect previewRect, Rect cropRect) {
-        LogUtils.d("准备裁剪, previewRect = " + previewRect.toString() + ", cropRect = " + cropRect);
+        LogUtils.d(TAG, "准备裁剪, previewRect = " + previewRect.toString() + ", cropRect = " + cropRect);
         long timestamp = System.currentTimeMillis();
 
         int cropLeft = cropRect.left;
@@ -384,9 +392,9 @@ public class BitmapUtils {
         cropTop = (int) (1.0f * cropTop / previewRect.height() * bitmap.getHeight());
         cropWidth = (int) (1.0f * cropWidth / previewRect.width() * bitmap.getWidth());
         cropHeight = (int) (1.0f * cropHeight / previewRect.height() * bitmap.getHeight());
-        LogUtils.d("开始裁剪, cropLeft = " + cropLeft + ", cropTop = " + cropTop + ", cropWidth = " + cropWidth + ", cropHeight = " + cropHeight + ", time = " + (System.currentTimeMillis() - timestamp));
+        LogUtils.d(TAG, "开始裁剪, cropLeft = " + cropLeft + ", cropTop = " + cropTop + ", cropWidth = " + cropWidth + ", cropHeight = " + cropHeight + ", time = " + (System.currentTimeMillis() - timestamp));
         Bitmap cropBitmap = Bitmap.createBitmap(bitmap, cropLeft, cropTop, cropWidth, cropHeight);
-        LogUtils.d("裁剪完成, time = " + (System.currentTimeMillis() - timestamp));
+        LogUtils.d(TAG, "裁剪完成, time = " + (System.currentTimeMillis() - timestamp));
         return cropBitmap;
     }
 
@@ -431,6 +439,130 @@ public class BitmapUtils {
             }
         }
         return inSampleSize;
+    }
+
+    /**
+     * 计算图片比例缩放
+     */
+    public static byte[] getRecognizeImageByte(Bitmap bitmap, int w, int h, boolean circulation) {
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        // 计算压缩的比率
+        float scaleHeight = ((float) h) / height;
+        float scaleWidth = ((float) w) / width;
+        // 获取想要缩放的matrix
+        Matrix matrix = new Matrix();
+        matrix.postScale(scaleWidth, scaleHeight);
+        // 获取新的bitmap
+        bitmap = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, true);
+        return compressImageByte(bitmap, circulation);
+    }
+
+    /**
+     * 质量压缩方法（返回图片字节数组byte[]）
+     */
+    public static byte[] compressImageByte(Bitmap image, boolean circulation) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        if (circulation) {
+            image.compress(Bitmap.CompressFormat.JPEG, 100, baos);// 质量压缩方法，这里100表示不压缩，把压缩后的数据存放到baos中
+            int options = 90;
+            while (baos.toByteArray().length / 1024 > 30) { // 循环判断如果压缩后图片是否大于30kb,大于继续压缩
+                baos.reset(); // 重置baos即清空baos
+                image.compress(Bitmap.CompressFormat.JPEG, options, baos);// 这里压缩options%，把压缩后的数据存放到baos中
+                options -= 10;// 每次都减少10
+            }
+        } else {
+            int options = 90;
+            image.compress(Bitmap.CompressFormat.JPEG, 100, baos);// 质量压缩方法，这里100表示不压缩，把压缩后的数据存放到baos中
+            while (baos.toByteArray().length / 1024 > 100 && options >= 75) { // 循环判断如果压缩后图片是否大于100kb且压缩比例不小于0.75,满足继续压缩
+                baos.reset(); // 重置baos即清空baos
+                image.compress(Bitmap.CompressFormat.JPEG, options, baos);// 这里压缩options%，把压缩后的数据存放到baos中
+                options -= 5;// 每次都减少10
+            }
+        }
+        return baos.toByteArray();
+    }
+
+    /**
+     * 创建补位图片setPixel的方式设置图片  白色
+     */
+    public static Bitmap createBitmap(int w, int h) {
+        Bitmap bitmapBlank = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        for (int i = 0; i < bitmapBlank.getHeight(); i++) {
+            for (int j = 0; j < bitmapBlank.getWidth(); j++) {
+                bitmapBlank.setPixel(j, i, Color.argb(255, 255, 255, 255));
+            }
+        }
+        return bitmapBlank;
+    }
+
+    /**
+     * 根据方向判断在不同位置拼接图片
+     */
+    private static Bitmap createBitmapForFateMix(Bitmap first, Bitmap second, int direction) {
+        if (first == null) {
+            return null;
+        }
+        if (second == null) {
+            return first;
+        }
+        int fw = first.getWidth();
+        int fh = first.getHeight();
+        int sw = second.getWidth();
+        int sh = second.getHeight();
+        Bitmap newBitmap = null;
+        if (direction == LEFT) {
+            newBitmap = Bitmap.createBitmap(fw + sw, Math.max(fh, sh), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(newBitmap);
+            canvas.drawBitmap(first, sw, 0, null);
+            canvas.drawBitmap(second, 0, 0, null);
+        } else if (direction == RIGHT) {
+            newBitmap = Bitmap.createBitmap(fw + sw, Math.max(fh, sh), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(newBitmap);
+            canvas.drawBitmap(first, 0, 0, null);
+            canvas.drawBitmap(second, fw, 0, null);
+        } else if (direction == TOP) {
+            newBitmap = Bitmap.createBitmap(Math.max(sw, fw), fh + sh, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(newBitmap);
+            canvas.drawBitmap(first, 0, sh, null);
+            canvas.drawBitmap(second, 0, 0, null);
+        } else if (direction == BOTTOM) {
+            newBitmap = Bitmap.createBitmap(Math.max(sw, fw), fh + sh, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(newBitmap);
+            canvas.drawBitmap(first, 0, 0, null);
+            canvas.drawBitmap(second, 0, fh, null);
+        }
+        return newBitmap;
+    }
+
+    /**
+     * 检查bitmap是否正方形的图
+     */
+    public static Bitmap toSquareBitmap(Bitmap bitmap) {
+        if (bitmap == null) {
+            return null;
+        }
+        if (bitmap.getWidth() == bitmap.getHeight()) {
+            // 正方形的图直接返回
+            return bitmap;
+        }
+
+        int direction;
+        int spaceWidth;
+        int spaceHeight;
+        if (bitmap.getWidth() > bitmap.getHeight()) {
+            direction = BOTTOM;
+            spaceWidth = bitmap.getWidth();
+            spaceHeight = bitmap.getWidth() - bitmap.getHeight();
+        } else {
+            direction = RIGHT;
+            spaceWidth = bitmap.getHeight() - bitmap.getWidth();
+            spaceHeight = bitmap.getHeight();
+        }
+        Bitmap blackBitmap = createBitmap(spaceWidth, spaceHeight);
+        Bitmap destBitmap = createBitmapForFateMix(bitmap, blackBitmap, direction);
+        recycleBitmap(blackBitmap);
+        return destBitmap;
     }
 
 }

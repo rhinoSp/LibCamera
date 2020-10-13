@@ -2,9 +2,13 @@ package com.rhino.camera;
 
 import android.content.Context;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
+import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.media.MediaRecorder;
 import android.support.annotation.IntDef;
@@ -17,6 +21,7 @@ import android.view.TextureView;
 
 import com.rhino.log.LogUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
@@ -27,6 +32,8 @@ import java.util.List;
  * @since Create on 2019/7/18.
  */
 public class CameraTextureView extends TextureView implements TextureView.SurfaceTextureListener {
+
+    public final static String TAG = CameraTextureView.class.getSimpleName();
 
     public static final int SENSOR_ORIENTATION_DEFAULT_DEGREES = 90;
     public static final int SENSOR_ORIENTATION_INVERSE_DEGREES = 270;
@@ -104,39 +111,39 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
     /**
      * Camera
      */
-    public Camera camera;
+    private Camera camera;
     /**
      * CameraInfo
      */
-    public Camera.CameraInfo cameraInfo;
+    private Camera.CameraInfo cameraInfo;
     /**
      * 摄像头预览回调
      */
-    public Camera.PreviewCallback previewCallback;
+    private Camera.PreviewCallback previewCallback;
     /**
      * 摄像头预览大小
      */
-    public Camera.Size previewSize;
+    private Camera.Size previewSize;
     /**
      * 摄像头拍照图片大小
      */
-    public Camera.Size pictureSize;
+    private Camera.Size pictureSize;
     /**
      * 摄像头facing
      */
-    public int cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT;
+    private int cameraFacing = Camera.CameraInfo.CAMERA_FACING_FRONT;
     /**
      * 摄像头id
      */
-    public int cameraId = -1;
+    private int cameraId = -1;
     /**
      * 摄像头是否打开
      */
-    public boolean isCameraOpened = false;
+    private boolean isCameraOpened = false;
     /**
      * 是否打开预览
      */
-    public boolean isStartPreview = false;
+    private boolean isStartPreview = false;
     /**
      * 打开预览失败重试次数
      */
@@ -145,54 +152,54 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
     /**
      * 期望的预览分辨率宽
      */
-    public int expectPreviewWidth = 1920;
+    private int expectPreviewWidth = 1920;
     /**
      * 期望的预览分辨率高
      */
-    public int expectPreviewHeight = 1080;
+    private int expectPreviewHeight = 1080;
 
     /**
      * 期望的拍照分辨率宽
      */
-    public int expectPictureWidth = -1;
+    private int expectPictureWidth = -1;
     /**
      * 期望的拍照分辨率高
      */
-    public int expectPictureHeight = -1;
+    private int expectPictureHeight = -1;
 
     /**
      * 视频编码
      */
-    public int videoEncoder = MediaRecorder.VideoEncoder.H264;
+    private int videoEncoder = MediaRecorder.VideoEncoder.H264;
     /**
      * 音频编码
      */
-    public int audioEncoder = MediaRecorder.AudioEncoder.DEFAULT;
+    private int audioEncoder = MediaRecorder.AudioEncoder.DEFAULT;
     /**
      * MediaRecorder
      */
-    public MediaRecorder mediaRecorder;
+    private MediaRecorder mediaRecorder;
     /**
      * 是否正在录制
      */
-    public boolean recording;
+    private boolean recording;
 
     /**
      * 手机的方向
      */
-    public int windowRotation;
+    private int windowRotation;
     /**
      * 方向传感器监听器
      */
-    public OrientationEventListener orientationEventListener;
+    private OrientationEventListener orientationEventListener;
     /**
      * 手机的方向
      */
-    public int phoneDegree = 0;
+    private int phoneDegree = 0;
     /**
      * 手机方向改变回调时间
      */
-    public OnPhoneDegreeChangeListener onPhoneDegreeChangeListener;
+    private OnPhoneDegreeChangeListener onPhoneDegreeChangeListener;
     /**
      * 控件状态变化监听器
      */
@@ -364,7 +371,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
                     if (onPhoneDegreeChangeListener != null) {
                         onPhoneDegreeChangeListener.onPhoneDegreeChanged(phoneDegree);
                     }
-                    LogUtils.d("onOrientationChanged: orientation = " + orientation + ", phoneDegree = " + phoneDegree + ", cameraInfo.orientation = " + cameraInfo.orientation);
+                    LogUtils.d(TAG, "onOrientationChanged: orientation = " + orientation + ", phoneDegree = " + phoneDegree + ", cameraInfo.orientation = " + cameraInfo.orientation);
                 }
             };
             orientationEventListener.enable();
@@ -388,13 +395,13 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
         try {
             if (getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE) {
                 int orientation = isFrontCamera() ? DEGREES_360 - cameraInfo.orientation : cameraInfo.orientation;
-                LogUtils.d("初始化摄像头预览扭转角度：cameraInfo.orientation = " + cameraInfo.orientation + ", orientation = " + orientation);
+                LogUtils.d(TAG, "初始化摄像头预览扭转角度：cameraInfo.orientation = " + cameraInfo.orientation + ", orientation = " + orientation);
                 camera.setDisplayOrientation(orientation);
             } else {
                 camera.setDisplayOrientation(0);
             }
         } catch (Exception e) {
-            LogUtils.e(e.toString());
+            LogUtils.e(TAG, e.toString());
         }
     }
 
@@ -406,12 +413,13 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
             Camera.Parameters params = camera.getParameters();
             List<Camera.Size> supportedPreviewSizes = params.getSupportedPreviewSizes();
             previewSize = getMatchingSize(supportedPreviewSizes, expectPreviewWidth, expectPreviewHeight);
-            LogUtils.d("最佳preview尺寸 width = " + previewSize.width + ", height = " + previewSize.height);
+            LogUtils.d(TAG, "最佳preview尺寸 width = " + previewSize.width + ", height = " + previewSize.height);
             params.setPreviewSize(previewSize.width, previewSize.height);
             camera.setParameters(params);
+            requestLayout();
         } catch (Exception e) {
             previewSize = camera.getParameters().getPreviewSize();
-            LogUtils.e(e.toString());
+            LogUtils.e(TAG, e.toString());
         }
     }
 
@@ -427,12 +435,12 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
             } else {
                 pictureSize = getMatchingSize(supportedPictureSizes, expectPictureWidth, expectPictureHeight);
             }
-            LogUtils.d("最佳picture尺寸 width = " + pictureSize.width + ", height = " + pictureSize.height);
+            LogUtils.d(TAG, "最佳picture尺寸 width = " + pictureSize.width + ", height = " + pictureSize.height);
             params.setPictureSize(pictureSize.width, pictureSize.height);
             this.camera.setParameters(params);
         } catch (Exception e) {
             pictureSize = camera.getParameters().getPictureSize();
-            LogUtils.e(e.toString());
+            LogUtils.e(TAG, e.toString());
         }
     }
 
@@ -445,7 +453,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
             params.setPreviewFormat(ImageFormat.NV21);
             camera.setParameters(params);
         } catch (Exception e) {
-            LogUtils.e(e.toString());
+            LogUtils.e(TAG, e.toString());
         }
     }
 
@@ -461,7 +469,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
             }
             camera.setParameters(params);
         } catch (Exception e) {
-            LogUtils.e(e.toString());
+            LogUtils.e(TAG, e.toString());
         }
     }
 
@@ -479,7 +487,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
         float viewProportion = (float) getWidth() / (float) getHeight();
         for (int i = 0; i < sizes.size(); ++i) {
             Camera.Size itemSize = sizes.get(i);
-            LogUtils.d("support size width: " + itemSize.width + ", height: " + itemSize.height);
+            LogUtils.d(TAG, "support size width: " + itemSize.width + ", height: " + itemSize.height);
             if (itemSize.width < INVALID_PREVIEW_MIN_SIZE || itemSize.height < INVALID_PREVIEW_MIN_SIZE) {
                 continue;
             }
@@ -500,10 +508,10 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
                 selectSize = itemSize;
                 selectProportion = differenceProportion;
             } else if (differenceProportion <= selectProportion) {
-                LogUtils.d("<= differenceProportion = " + differenceProportion + ", selectProportion: " + selectProportion + ", itemSize = " + itemSize.width + "x" + itemSize.height);
+                LogUtils.d(TAG, "<= differenceProportion = " + differenceProportion + ", selectProportion: " + selectProportion + ", itemSize = " + itemSize.width + "x" + itemSize.height);
                 if (differenceProportion == selectProportion) {
                     if (selectSize != null && selectSize.width + selectSize.height < itemSize.width + itemSize.height) {
-                        LogUtils.d("selectSize = " + selectSize.width + "x" + selectSize.height);
+                        LogUtils.d(TAG, "selectSize = " + selectSize.width + "x" + selectSize.height);
                         selectSize = itemSize;
                         selectProportion = differenceProportion;
                     }
@@ -552,7 +560,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
             setPreviewFormat();
             isCameraOpened = (camera != null);
         } catch (Exception e) {
-            LogUtils.e("摄像头打开失败：" + e.toString());
+            LogUtils.e(TAG, "摄像头打开失败：" + e.toString());
             isCameraOpened = false;
         }
         return isCameraOpened;
@@ -571,7 +579,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
             camera = null;
             isCameraOpened = false;
         } catch (Exception e) {
-            LogUtils.e("关闭摄像头失败：" + e.toString());
+            LogUtils.e(TAG, "关闭摄像头失败：" + e.toString());
             return false;
         }
         return true;
@@ -595,7 +603,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
                 isStartPreview = true;
                 startPreviewTryCount = 0;
             } catch (Exception e) {
-                LogUtils.e("打开预览失败：" + e.toString());
+                LogUtils.e(TAG, "打开预览失败：" + e.toString());
                 isStartPreview = false;
                 closeCamera();
                 if (startPreviewTryCount < MAX_START_PREVIEW_TRY_COUNT) {
@@ -622,7 +630,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
                 camera.setPreviewCallback(null);
             }
         } catch (Exception e) {
-            LogUtils.e("停止预览失败：" + e.toString());
+            LogUtils.e(TAG, "停止预览失败：" + e.toString());
             return false;
         }
         return true;
@@ -710,7 +718,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
             mediaRecorder.setVideoEncoder(videoEncoder); // 视频编码
             mediaRecorder.setAudioEncoder(audioEncoder); // 音频编码
             int mSensorOrientation = getCameraOrientation();
-            LogUtils.d("windowRotation = " + windowRotation + ", mSensorOrientation = " + mSensorOrientation);
+            LogUtils.d(TAG, "windowRotation = " + windowRotation + ", mSensorOrientation = " + mSensorOrientation);
             switch (mSensorOrientation) {
                 case SENSOR_ORIENTATION_DEFAULT_DEGREES:
                     mediaRecorder.setOrientationHint(DEFAULT_ORIENTATIONS.get(windowRotation));
@@ -727,7 +735,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
             setAutoFocus(null);
             return true;
         } catch (Exception e) {
-            LogUtils.e(e.toString());
+            LogUtils.e(TAG, e.toString());
         }
         return false;
     }
@@ -745,7 +753,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
                 mediaRecorder.stop();
                 mediaRecorder.release();
             } catch (Exception e) {
-                LogUtils.e(e.toString());
+                LogUtils.e(TAG, e.toString());
             }
         }
     }
@@ -937,7 +945,7 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
             camera.setParameters(parameters); // 设置相机参数
             camera.autoFocus(callback); // 开启对焦
         } catch (Exception e) {
-            LogUtils.e(e.toString());
+            LogUtils.e(TAG, e.toString());
         }
     }
 
@@ -952,31 +960,57 @@ public class CameraTextureView extends TextureView implements TextureView.Surfac
                 camera.takePicture(null, null, callback);
             }
         } catch (Exception e) {
-            LogUtils.e(e.toString());
+            LogUtils.e(TAG, e.toString());
         }
+    }
+
+    /**
+     * 抓取预览图片
+     *
+     * @param data 预览byte数据
+     * @return Bitmap
+     */
+    @Nullable
+    public Bitmap takePreviewPicture(byte[] data) {
+        try {
+            final Camera.Parameters parameters = camera.getParameters();
+            int width = parameters.getPreviewSize().width;
+            int height = parameters.getPreviewSize().height;
+            YuvImage yuv = new YuvImage(data, parameters.getPreviewFormat(), width, height, null);
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            yuv.compressToJpeg(new Rect(0, 0, width, height), 100, out);
+            byte[] bytes = out.toByteArray();
+            Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            Matrix matrix = new Matrix();
+            matrix.postRotate(getCameraOrientation());
+            return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+        } catch (Exception e) {
+            LogUtils.e(TAG, e.toString());
+        }
+        return null;
     }
 
     public static class DefaultSurfaceTextureListener implements SurfaceTextureListener {
 
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            LogUtils.d("onSurfaceTextureAvailable");
+            LogUtils.d(TAG, "onSurfaceTextureAvailable");
         }
 
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            LogUtils.d("onSurfaceTextureSizeChanged");
+            LogUtils.d(TAG, "onSurfaceTextureSizeChanged");
         }
 
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            LogUtils.d("onSurfaceTextureDestroyed");
+            LogUtils.d(TAG, "onSurfaceTextureDestroyed");
             return false;
         }
 
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-            LogUtils.d("onSurfaceTextureUpdated");
+            LogUtils.d(TAG, "onSurfaceTextureUpdated");
         }
     }
 

@@ -209,7 +209,7 @@ public class CameraActivity extends Activity implements Camera.PreviewCallback {
             byte[] bytes = out.toByteArray();
             Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
             // TODO 测试
-            BitmapUtils.saveBitmap(bitmap, "pBitmap.jpg");
+            //BitmapUtils.saveBitmap(bitmap, "/sdcard/Album/pBitmap.jpg", 100);
 
             // 旋转图片动作
             Matrix matrix = new Matrix();
@@ -217,7 +217,7 @@ public class CameraActivity extends Activity implements Camera.PreviewCallback {
             // 创建新的图片
             Bitmap matrixBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
             // TODO 测试
-            BitmapUtils.saveBitmap(matrixBitmap, "pMatrixBitmap.jpg");
+            //BitmapUtils.saveBitmap(matrixBitmap, "/sdcard/Album/pMatrixBitmap.jpg", 100);
 
             previewTestEnable = false;
         }
