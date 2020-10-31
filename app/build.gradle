@@ -53,6 +53,6 @@ dependencies {
 
     implementation project(':libCamera')
 //    implementation(name: 'com.rhino.camera-libCamera-v1.9.1', ext: 'aar')
-    implementation(name: 'com.rhino.log-libLog-v1.4.2', ext: 'aar')
+    implementation 'com.github.rhinoSp:LibLog:v1.4.5'
 
 }

@@ -30,6 +30,8 @@ import java.util.List;
  */
 public class FileUtils {
 
+    private static final String TAG = FileUtils.class.getName();
+
     /**
      * Whether has SD card.
      *
@@ -81,16 +83,15 @@ public class FileUtils {
      */
     public static boolean makeDirectory(String... directoryArray) {
         boolean isSuccess = true;
-        for (int i = 0, count = directoryArray.length; i < count; i++) {
+        for (String d : directoryArray) {
             try {
-                File dir = new File(directoryArray[i]);
+                File dir = new File(d);
                 if (!dir.exists()) {
                     isSuccess &= dir.mkdirs();
                 }
             } catch (Exception e) {
                 isSuccess = false;
             }
-            isSuccess &= isSuccess;
         }
         return isSuccess;
     }
@@ -119,19 +120,23 @@ public class FileUtils {
     /**
      * Delete directory.
      *
-     * @param directoryFile the path of directory
+     * @param directoryFilePath the path of directory
      * @return true success,  false failed
      */
-    public static boolean deleteDirectory(File directoryFile) {
+    public static boolean deleteDirectory(String directoryFilePath) {
+        if (directoryFilePath == null) {
+            return false;
+        }
         boolean isSuccess = true;
-        if (directoryFile == null || !directoryFile.exists() || !directoryFile.isDirectory()) {
+        File directoryFile = new File(directoryFilePath);
+        if (!directoryFile.exists() || !directoryFile.isDirectory()) {
             return false;
         }
         for (File file : directoryFile.listFiles()) {
             if (file.isFile()) {
                 isSuccess &= file.delete();
             } else if (file.isDirectory()) {
-                isSuccess &= deleteDirectory(file);
+                isSuccess &= deleteDirectory(file.getPath());
             }
         }
         isSuccess &= directoryFile.delete();
@@ -176,9 +181,7 @@ public class FileUtils {
      */
     public static boolean copyDirectory(String srcDirPath, String destDirPath, boolean isOverlay) {
         File srcDir = new File(srcDirPath);
-        if (!srcDir.exists()) {
-            return false;
-        } else if (!srcDir.isDirectory()) {
+        if (!srcDir.exists() || !srcDir.isDirectory()) {
             return false;
         }
         if (!destDirPath.endsWith(File.separator)) {
@@ -187,30 +190,26 @@ public class FileUtils {
         File destDir = new File(destDirPath);
         if (destDir.exists()) {
             if (isOverlay) {
-                deleteFile(destDirPath);
+                deleteDirectory(destDirPath);
             } else {
                 return true;
             }
-        } else {
-            if (!destDir.mkdirs()) {
-                return false;
-            }
+        } else if (!destDir.mkdirs()) {
+            return false;
         }
         boolean flag = true;
         File[] files = srcDir.listFiles();
-        if (files != null) {
-            for (File file : files) {
-                if (file.isFile()) {
-                    flag = copyFile(file.getAbsolutePath(), destDirPath + file.getName(), isOverlay);
-                    if (!flag) {
-                        break;
-                    }
-                } else if (file.isDirectory()) {
-                    flag = copyDirectory(file.getAbsolutePath(), destDirPath + file.getName(), isOverlay);
-                    if (!flag) {
-                        break;
-                    }
-                }
+        if (files == null) {
+            return false;
+        }
+        for (File file : files) {
+            if (file.isFile()) {
+                flag = copyFile(file.getAbsolutePath(), destDirPath + file.getName(), isOverlay);
+            } else if (file.isDirectory()) {
+                flag = copyDirectory(file.getAbsolutePath(), destDirPath + file.getName(), isOverlay);
+            }
+            if (!flag) {
+                break;
             }
         }
         return flag;
@@ -258,42 +257,15 @@ public class FileUtils {
                 }
             }
         }
-        FileInputStream inStream = null;
-        FileOutputStream outStream = null;
-        FileChannel in = null;
-        FileChannel out = null;
-        try {
-            inStream = new FileInputStream(srcFile);
-            outStream = new FileOutputStream(destFile);
+        try (FileInputStream inStream = new FileInputStream(srcFile);
+             FileOutputStream outStream = new FileOutputStream(destFile);
+             FileChannel in = inStream.getChannel();
+             FileChannel out = outStream.getChannel()) {
             FileDescriptor fd = outStream.getFD();
-            in = inStream.getChannel();
-            out = outStream.getChannel();
             in.transferTo(0, in.size(), out);
             fd.sync();
-            inStream.close();
-            in.close();
-            outStream.close();
-            out.close();
         } catch (IOException e) {
-            LogUtils.e(e.toString());
-            return false;
-        } finally {
-            try {
-                if (inStream != null) {
-                    inStream.close();
-                }
-                if (outStream != null) {
-                    outStream.close();
-                }
-                if (in != null) {
-                    in.close();
-                }
-                if (out != null) {
-                    out.close();
-                }
-            } catch (IOException e) {
-                LogUtils.e(e.toString());
-            }
+            LogUtils.e(TAG, e.toString());
         }
         return true;
     }
@@ -318,40 +290,20 @@ public class FileUtils {
      * @param destDirectoryPath destDirectoryPath
      */
     public static boolean copyAssertFileToSdcard(Context context, String assertFileName, String destFileName, String destDirectoryPath, boolean overWrite) {
-        File path = new File(destDirectoryPath);
-        if (!path.exists() && !path.mkdirs()) {
-            return false;
+        File e = new File(destDirectoryPath + "/" + destFileName);
+        if (!overWrite && e.exists() && e.length() > 0L) {
+            return true;
         }
-        FileOutputStream fos = null;
-        InputStream inputStream = null;
-        try {
-            File e = new File(destDirectoryPath + "/" + destFileName);
-            if (!overWrite && e.exists() && e.length() > 0L) {
-                return true;
-            }
-            fos = new FileOutputStream(e);
-            inputStream = context.getResources().getAssets().open(assertFileName);
+        try (FileOutputStream fos = new FileOutputStream(e);
+             InputStream inputStream = context.getResources().getAssets().open(assertFileName);) {
             byte[] buf = new byte[1024];
             int len;
             while ((len = inputStream.read(buf)) != -1) {
                 fos.write(buf, 0, len);
             }
-            fos.close();
-            inputStream.close();
             return true;
-        } catch (Exception e) {
-            LogUtils.e(e.toString());
-        } finally {
-            try {
-                if (fos != null) {
-                    fos.close();
-                }
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException e) {
-                LogUtils.e(e.toString());
-            }
+        } catch (IOException ex) {
+            LogUtils.e(TAG, ex.toString());
         }
         return false;
     }
@@ -372,36 +324,21 @@ public class FileUtils {
 
     /**
      * Read the file content.
+     *
      * @param filePath the file path
      * @return byte[]
      */
     public static byte[] readFileToByte(String filePath) {
-        InputStream inputStream = null;
-        ByteArrayOutputStream byteArrayOutputStream = null;
-        try {
+        try (InputStream inputStream = new FileInputStream(filePath);
+             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
             int length;
             byte[] bytes = new byte[1024];
-            inputStream = new FileInputStream(filePath);
-            byteArrayOutputStream = new ByteArrayOutputStream();
             while ((length = inputStream.read(bytes)) != -1) {
                 byteArrayOutputStream.write(bytes, 0, length);
             }
-            inputStream.close();
-            byteArrayOutputStream.close();
             return byteArrayOutputStream.toByteArray();
         } catch (IOException e) {
-            LogUtils.e(e);
-        } finally {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-                if (byteArrayOutputStream != null) {
-                    byteArrayOutputStream.close();
-                }
-            } catch (IOException e) {
-                LogUtils.e(e);
-            }
+            LogUtils.e(TAG, e.toString());
         }
         return null;
     }
@@ -414,33 +351,32 @@ public class FileUtils {
      * @return the content
      */
     public static String readFileFromAssets(Context context, String fileName) {
-        InputStream inputStream = null;
-        ByteArrayOutputStream byteArrayOutputStream = null;
         try {
+            return new String(readModelBufferFromAssertToByte(context, fileName));
+        } catch (Exception e) {
+            LogUtils.e(TAG, e.toString());
+        }
+        return null;
+    }
+
+    /**
+     * 读取assets目录下文件并返回byte[]数据
+     *
+     * @param context  上下文对象
+     * @param fileName 文件名
+     * @return 返回读取结果
+     */
+    public static byte[] readModelBufferFromAssertToByte(Context context, String fileName) {
+        try (InputStream inputStream = context.getResources().getAssets().open(fileName);
+             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
             int length;
             byte[] bytes = new byte[1024];
-            inputStream = context.getResources().getAssets()
-                    .open(fileName);
-            byteArrayOutputStream = new ByteArrayOutputStream();
             while ((length = inputStream.read(bytes)) != -1) {
                 byteArrayOutputStream.write(bytes, 0, length);
             }
-            inputStream.close();
-            byteArrayOutputStream.close();
-            return new String(byteArrayOutputStream.toByteArray());
+            return byteArrayOutputStream.toByteArray();
         } catch (Exception e) {
-            LogUtils.e(e.toString());
-        } finally {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-                if (byteArrayOutputStream != null) {
-                    byteArrayOutputStream.close();
-                }
-            } catch (IOException e) {
-                LogUtils.e(e.toString());
-            }
+            LogUtils.e(TAG, e.toString());
         }
         return null;
     }
@@ -466,22 +402,11 @@ public class FileUtils {
      * @return true write success
      */
     public static boolean writeFile(String filePath, byte[] b) {
-        FileOutputStream fileOutputStream = null;
-        try {
-            fileOutputStream = new FileOutputStream(filePath);
+        try (FileOutputStream fileOutputStream = new FileOutputStream(filePath)) {
             fileOutputStream.write(b);
-            fileOutputStream.close();
-        } catch (Exception e) {
-            LogUtils.e(e.toString());
+        } catch (IOException e) {
+            LogUtils.e(TAG, e.toString());
             return false;
-        } finally {
-            try {
-                if (fileOutputStream != null) {
-                    fileOutputStream.close();
-                }
-            } catch (IOException e) {
-                LogUtils.e(e.toString());
-            }
         }
         return true;
     }
@@ -491,22 +416,12 @@ public class FileUtils {
      */
     public static String fileToBase64(File file) {
         String base64 = null;
-        InputStream in = null;
-        try {
-            in = new FileInputStream(file);
+        try (InputStream in = new FileInputStream(file)) {
             byte[] bytes = new byte[in.available()];
             int length = in.read(bytes);
             base64 = Base64.encodeToString(bytes, 0, length, Base64.DEFAULT);
         } catch (IOException e) {
-            LogUtils.e(e.toString());
-        } finally {
-            try {
-                if (in != null) {
-                    in.close();
-                }
-            } catch (IOException e) {
-                LogUtils.e(e.toString());
-            }
+            LogUtils.e(TAG, e.toString());
         }
         return base64;
     }
@@ -524,7 +439,7 @@ public class FileUtils {
      *
      * @param dirPath        the path of dir
      * @param fileNameSuffix the suffix of file name, null will return all
-     * @return
+     * @return List
      */
     @NonNull
     public static List<String> getDirFiles(String dirPath, @Nullable String fileNameSuffix) {
@@ -551,6 +466,20 @@ public class FileUtils {
             }
         });
         return filePaths;
+    }
+
+    /**
+     * Get file name in url
+     *
+     * @param url file url
+     * @return file name
+     */
+    public static String getFileName(String url) {
+        if (url == null) {
+            return null;
+        }
+        int index = url.lastIndexOf("/");
+        return index >= 0 ? url.substring(index + 1) : url;
     }
 
 }
