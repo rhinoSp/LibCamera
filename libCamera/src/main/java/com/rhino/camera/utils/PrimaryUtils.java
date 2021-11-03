@@ -1,7 +1,6 @@
 package com.rhino.camera.utils;
 
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.NonNull;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;

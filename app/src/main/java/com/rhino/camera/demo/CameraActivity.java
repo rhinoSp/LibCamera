@@ -2,7 +2,6 @@ package com.rhino.camera.demo;
 
 import android.app.Activity;
 import android.content.Context;
-import android.databinding.DataBindingUtil;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -12,8 +11,6 @@ import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Environment;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.view.Display;
 import android.view.MotionEvent;
 import android.view.View;
@@ -21,11 +18,15 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.databinding.DataBindingUtil;
+
 import com.rhino.camera.CameraTextureView;
+import com.rhino.camera.demo.databinding.ActivityCameraBinding;
 import com.rhino.camera.utils.BitmapUtils;
 import com.rhino.camera.utils.CameraPermissionUtils;
 import com.rhino.camera.utils.PrimaryUtils;
-import com.rhino.camera.demo.databinding.ActivityCameraBinding;
 import com.rhino.log.LogUtils;
 import com.rhino.log.crash.CrashHandlerUtils;
 import com.rhino.log.crash.DefaultCrashHandler;

@@ -11,13 +11,14 @@ import android.graphics.SurfaceTexture;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
 import android.media.MediaRecorder;
-import android.support.annotation.IntDef;
-import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.SparseIntArray;
 import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.TextureView;
+
+import androidx.annotation.IntDef;
+import androidx.annotation.Nullable;
 
 import com.rhino.log.LogUtils;
 
